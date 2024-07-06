@@ -1,3 +1,5 @@
+![PeInjector Logo](https://mauricelambert.github.io/info/python/security/PeInjector_small.png "PeInjector logo")
+
 # PeInjector
 
 ## Description
