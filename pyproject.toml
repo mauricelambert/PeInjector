@@ -1,0 +1,53 @@
+# [build-system]
+# requires = ["setuptools"]
+# build-backend = "setuptools.build_meta"
+
+[project]
+name = "PeInjector"
+version = "0.0.1"
+dependencies = []
+authors = [
+    {name = "Maurice Lambert", email = "mauricelambert434@gmail.com"},
+]
+maintainers = [
+    {name = "Maurice Lambert", email = "mauricelambert434@gmail.com"},
+]
+description = 'This python tool injects shellcode in Windows Program Executable to backdoor it with optional polymorphism.'
+readme = {file = "README.md", content-type = "text/markdown"}
+# url = "https://github.com/mauricelambert/PeInjector"
+# download-url = "https://mauricelambert.github.io/info/python/security/PeInjector.pyz"
+classifiers = [
+    "Topic :: System",
+    "Topic :: Security",
+    "Environment :: Console",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.8",
+    'Operating System :: Microsoft :: Windows',
+    "Topic :: System :: Systems Administration",
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+]
+keywords = ['PE', 'shellcode', 'backdoor', 'polymorphism', 'pe-injector', 'injection']
+license = {text = "GPL-3.0 License"}
+requires-python = ">=3.8"
+
+[project.scripts]
+PeInjector = "PeInjector:main"
+
+[project.urls]
+"Github" = "https://github.com/mauricelambert/PeInjector"
+"Documentation" = "https://mauricelambert.github.io/info/python/security/PeInjector.html"
+"Python Executable" = "https://mauricelambert.github.io/info/python/security/PeInjector.pyz"
+"Windows Executable" = "https://mauricelambert.github.io/info/python/security/PeInjector.exe"
+
+[tool.setuptools]
+include-package-data = true
+platforms = ['Windows', 'Linux', "MacOS"]
+py-modules = ['PeInjector']
+packages = []
+script-files = []
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"], content-type = "text/markdown"}

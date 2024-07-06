@@ -1,0 +1,14 @@
+LICENSE.txt
+MANIFEST.in
+PeInjector.py
+README.md
+polymorphism_shellcodex64.asm
+polymorphism_shellcodex86.asm
+pyproject.toml
+setup.cfg
+setup.py
+PeInjector.egg-info/PKG-INFO
+PeInjector.egg-info/SOURCES.txt
+PeInjector.egg-info/dependency_links.txt
+PeInjector.egg-info/entry_points.txt
+PeInjector.egg-info/top_level.txt

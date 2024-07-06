@@ -1,0 +1,5 @@
+include *.md
+include *.txt
+include *.toml
+include *.cfg
+include *.asm
