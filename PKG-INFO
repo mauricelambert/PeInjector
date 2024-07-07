@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: PeInjector
-Version: 0.0.2
+Version: 1.0.0
 Summary: This python tool injects shellcode in Windows Program Executable to backdoor it with optional polymorphism.
 Home-page: https://github.com/mauricelambert/PeInjector
 Download-URL: https://mauricelambert.github.io/info/python/security/PeInjector.pyz
@@ -73,6 +73,17 @@ PeInjector.exe            # Using python Windows executable
 
 PeInjector test.exe 90    # Inject shellcode "NOP" (instruction 0x90) in test.exe
 PeInjector -p test.exe 90 # Inject polymorphism shellcode to execute "NOP" (instruction 0x90) in test.exe
+```
+
+### Python
+
+```python
+from PeInjector import *
+
+shellcode = b"\x90" # NOP instruction
+
+with open("target.exe", "rb") as target, open("backdoor.exe", "wb") as backdoor:
+    inject(target, backdoor, shellcode, polymorphism=False)
 ```
 
 ## Detections

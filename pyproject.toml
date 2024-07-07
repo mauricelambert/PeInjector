@@ -4,7 +4,7 @@
 
 [project]
 name = "PeInjector"
-version = "0.0.2"
+version = "1.0.0"
 dependencies = []
 authors = [
     {name = "Maurice Lambert", email = "mauricelambert434@gmail.com"},

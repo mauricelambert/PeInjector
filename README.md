@@ -41,6 +41,17 @@ PeInjector test.exe 90    # Inject shellcode "NOP" (instruction 0x90) in test.ex
 PeInjector -p test.exe 90 # Inject polymorphism shellcode to execute "NOP" (instruction 0x90) in test.exe
 ```
 
+### Python
+
+```python
+from PeInjector import *
+
+shellcode = b"\x90" # NOP instruction
+
+with open("target.exe", "rb") as target, open("backdoor.exe", "wb") as backdoor:
+    inject(target, backdoor, shellcode, polymorphism=False)
+```
+
 ## Detections
 
 > Thanks to [VirusTotal](https://www.virustotal.com/) online, public and free service. I use it to test my backdoored files and compare antivirus solution.
