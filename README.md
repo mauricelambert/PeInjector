@@ -113,7 +113,7 @@ The best solution to detect backdoored Program Executable is probably `Zoner` be
 ## Links
 
  - [Pypi](https://pypi.org/project/PeInjector)
- - [Github](https://github.com/user/PeInjector)
+ - [Github](https://github.com/mauricelambert/PeInjector)
  - [Documentation](https://mauricelambert.github.io/info/python/security/PeInjector.html)
  - [Python executable](https://mauricelambert.github.io/info/python/security/PeInjector.pyz)
  - [Python Windows executable](https://mauricelambert.github.io/info/python/security/PeInjector.exe)
