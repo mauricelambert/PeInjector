@@ -48,27 +48,27 @@ PeInjector -p test.exe 90 # Inject polymorphism shellcode to execute "NOP" (inst
 My *pe-injector* is not sneaky, there is no antivirus bypass and contains a lot of IOC or suspicious content but only few antivirus detect backdoored files:
 
 1. I sent 32 bits backdoored executable (compiled with gcc and stripped) on [virustotal](https://www.virustotal.com/gui/file/9ac447a91465402917f1b134923a1457728b9e4808fa273a8c71f6357cad4dc6) with a polymorphic shellcode execution but only 15 antivirus detect it as malicious. The following elements should be detected by antivirus:
-    - Last section have *RWX* permissions (it's very very suspicious)
-    - Last section name is `.inject` and contains *executable code* (PE characteristics) (it's very suspicious)
-    - Entry point in the last section (it's very suspicious)
-    - There are 2 section with *executable code* (PE characteristics) (it's suspicious)
+    - Last section have *RWX* permissions (very very suspicious)
+    - Last section name is `.inject` and contains *executable code* (PE characteristics) (very suspicious)
+    - Entry point in the last section (very suspicious)
+    - There are 2 section with *executable code* (PE characteristics) (suspicious)
 2. I sent 64 bits backdoored executable (compiled with gcc and stripped) on [virustotal](https://www.virustotal.com/gui/file/762853dbad74578fb6e3eb8ba50ea7ceb284237415b537511bf7ed8acf51f334) with a polymorphic shellcode execution but only 7 antivirus detect it as malicious. The following elements should be detected by antivirus:
     - Last section have *RWX* permissions (it's very very suspicious)
-    - Last section name is `.inject` and contains *executable code* (PE characteristics) (it's very suspicious)
-    - Entry point in the last section (it's very suspicious)
-    - There are 2 section with *executable code* (PE characteristics) (it's suspicious)
+    - Last section name is `.inject` and contains *executable code* (PE characteristics) (very suspicious)
+    - Entry point in the last section (very suspicious)
+    - There are 2 section with *executable code* (PE characteristics) (suspicious)
 3. I sent 32 bits backdoored executable (compiled with gcc and stripped) on [virustotal](https://www.virustotal.com/gui/file/1b6d2690c03ff65cc43d44aa5ac77fe5be9566c19bd5d3fec9ff3a637d8b9237) with shellcode execution but only 13 antivirus detect it as malicious. The following elements should be detected by antivirus:
-    - Last section name is `.inject` and contains *executable code* (PE characteristics) (it's very suspicious)
-    - Entry point in the last section (it's very suspicious)
-    - Last section *jump* on the first executable section (it's very suspicious)
-    - There are 2 section with *executable code* (PE characteristics) (it's suspicious)
-    - Last section have *RX* permissions (it's suspicious)
+    - Last section name is `.inject` and contains *executable code* (PE characteristics) (very suspicious)
+    - Entry point in the last section (very suspicious)
+    - Last section *jump* on the first executable section (very suspicious)
+    - There are 2 section with *executable code* (PE characteristics) (suspicious)
+    - Last section have *RX* permissions (suspicious)
 4. I sent 64 bits backdoored executable (compiled with gcc and stripped) on [virustotal](https://www.virustotal.com/gui/file/0780d9fa7dddf3c9c1a6da67f93f3916cf85f7f6e506a5b97861961b80ccbafa) with a polymorphic shellcode execution but only 4 antivirus detect it as malicious. The following elements should be detected by antivirus:
-    - Last section name is `.inject` and contains *executable code* (PE characteristics) (it's very suspicious)
-    - Entry point in the last section (it's very suspicious)
-    - Last section *jump* on the first executable section (it's very suspicious)
-    - There are 2 section with *executable code* (PE characteristics) (it's suspicious)
-    - Last section have *RX* permissions (it's suspicious)
+    - Last section name is `.inject` and contains *executable code* (PE characteristics) (very suspicious)
+    - Entry point in the last section (very suspicious)
+    - Last section *jump* on the first executable section (very suspicious)
+    - There are 2 section with *executable code* (PE characteristics) (suspicious)
+    - Last section have *RX* permissions (suspicious)
 
 ![VirusTotal screenshot for x86 backdoored PE with polymorphic shellcode](https://mauricelambert.github.io/info/python/security/virustotal_x86_backdoored_polymorphic.png "VirusTotal screenshot for x86 backdoored PE with polymorphic shellcode")
 

