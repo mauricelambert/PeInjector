@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: PeInjector
-Version: 1.0.1
+Version: 1.1.0
 Summary: This python tool injects shellcode in Windows Program Executable to backdoor it with optional polymorphism.
 Home-page: https://github.com/mauricelambert/PeInjector
 Download-URL: https://mauricelambert.github.io/info/python/security/PeInjector.pyz
@@ -133,10 +133,10 @@ Only 3 antivirus detect all backdoored Program Executable:
 
 For all of theses antivirus solutions, there is only one interesting detection name, an antivirus solution should detect malicious files, block it and sent some basic informations to SOC analyst. For the least detected backdoored file we have the following detection names:
 
-    - `BehavesLike.Win64.Kudj.lt` -> Windows 64 bits, detected as `Kudj.lt`, this detection name is very interesting because `Kudj` is a [file infector](https://www.fortiguard.com/encyclopedia/virus/10072870) but this detection name come from `Skyhigh` and this solution don't detect 32 bits backdoored files
-    - `Probably Heur.ExeHeaderL` -> heuristic detection for suspicious headers, this detection is not very bad but some informations are missing
-    - `W64.AIDetectMalware` -> Windows 64 bits, detected as malware by AI module but what is malicious ? No information about PE backdoored file... all techniques i use are documented on internet
-    - `Malicious` -> What is malicious ? No information about PE backdoored file... all techniques i use are documented on internet
+ - `BehavesLike.Win64.Kudj.lt` -> Windows 64 bits, detected as `Kudj.lt`, this detection name is very interesting because `Kudj` is a [file infector](https://www.fortiguard.com/encyclopedia/virus/10072870) but this detection name come from `Skyhigh` and this solution don't detect 32 bits backdoored files
+ - `Probably Heur.ExeHeaderL` -> heuristic detection for suspicious headers, this detection is not very bad but some informations are missing
+ - `W64.AIDetectMalware` -> Windows 64 bits, detected as malware by AI module but what is malicious ? No information about PE backdoored file... all techniques i use are documented on internet
+ - `Malicious` -> What is malicious ? No information about PE backdoored file... all techniques i use are documented on internet
 
 #### Best antivirus solution for PeInjector
 

