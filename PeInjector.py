@@ -25,7 +25,7 @@ This python tool injects shellcode in Windows Program Executable to
 backdoor it with optional polymorphism.
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.3"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -617,7 +617,6 @@ def write_new_pe_file(
     ).ljust(injector_data.new_values.file_size, b"\0") + bytes(
         memory_file_mapping[last_section_end_address:]
     )
-    breakpoint()
 
     executable.write(new_file_content)
     return new_file_content
