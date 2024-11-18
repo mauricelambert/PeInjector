@@ -25,7 +25,7 @@ This python tool injects shellcode in Windows Program Executable to
 backdoor it with optional polymorphism.
 """
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -517,8 +517,9 @@ def rewrite_sections_position(
 
     for index in range(injector_data.sections_number):
         section = injector_data.sections[index]
-        section.file_offset += 512
-        section_headers[0x14:0x18] = section.file_offset.to_bytes(4, "little")
+        if section.file_offset:
+            section.file_offset += 512
+            section_headers[0x14:0x18] = section.file_offset.to_bytes(4, "little")
         section_headers = section_headers[40:]
 
 
