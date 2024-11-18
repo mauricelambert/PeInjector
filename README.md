@@ -32,13 +32,16 @@ python3 -m pip install .
 ### Command line
 
 ```bash
-PeInjector                # Using CLI package executable
-python3 -m PeInjector     # Using python module
-python3 PeInjector.pyz    # Using python executable
-PeInjector.exe            # Using python Windows executable
+PeInjector                     # Using CLI package executable
+python3 -m PeInjector          # Using python module
+python3 PeInjector.pyz         # Using python executable
+PeInjector.exe                 # Using python Windows executable
 
-PeInjector test.exe 90    # Inject shellcode "NOP" (instruction 0x90) in test.exe
-PeInjector -p test.exe 90 # Inject polymorphism shellcode to execute "NOP" (instruction 0x90) in test.exe
+PeInjector test.exe 90         # Inject shellcode "NOP" (instruction 0x90) in test.exe
+PeInjector -p test.exe 90      # Inject polymorphism shellcode to execute "NOP" (instruction 0x90) in test.exe
+
+PeInjector -c test.exe calc    # Inject a shellcode to start the "calc" command line
+PeInjector -c -p test.exe calc # Inject a polymorphic shellcode (obfuscated shellcode) to start the "calc" command line
 ```
 
 ### Python
@@ -48,8 +51,11 @@ from PeInjector import *
 
 shellcode = b"\x90" # NOP instruction
 
-with open("target.exe", "rb") as target, open("backdoor.exe", "wb") as backdoor:
-    inject(target, backdoor, shellcode, polymorphism=False)
+with open("target.exe", "rb") as target, open("backdoored_nop.exe", "wb") as backdoor:
+    inject(target, backdoor, shellcode, polymorphism=False, command=True)
+
+with open("target.exe", "rb") as target, open("backdoored_command_calc.exe", "wb") as backdoor:
+    inject(target, backdoor, "calc", polymorphism=True, command=True)
 ```
 
 ## Detections
