@@ -25,7 +25,7 @@ This python tool injects shellcode in Windows Program Executable to
 backdoor it with optional polymorphism.
 """
 
-__version__ = "1.2.1"
+__version__ = "1.4.0"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -510,15 +510,18 @@ def rewrite_sections_position(
     This function writes new section offsets.
     """
 
-    injector_data.new_values.first_section_offset += 512
-    injector_data.new_values.section_offset += 512
-    injector_data.new_values.headers_size += 512
-    injector_data.new_values.file_size += 512
+    injector_data.new_values.first_section_offset += injector_data.file_aligment
+    injector_data.new_values.section_offset += injector_data.file_aligment
+    injector_data.new_values.headers_size += injector_data.file_aligment
+    injector_data.new_values.file_size += injector_data.file_aligment
 
     for index in range(injector_data.sections_number):
-        section = injector_data.sections[index]
+        section_offset = int.from_bytes(section_headers[0x14:0x18], 'little')
+        for section in injector_data.sections:
+            if section_offset == section.file_offset:
+                break
         if section.file_offset:
-            section.file_offset += 512
+            section.file_offset += injector_data.file_aligment
             section_headers[0x14:0x18] = section.file_offset.to_bytes(4, "little")
         section_headers = section_headers[40:]
 

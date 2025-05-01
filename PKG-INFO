@@ -1,6 +1,6 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.2
 Name: PeInjector
-Version: 1.2.1
+Version: 1.4.0
 Summary: This python tool injects shellcode in Windows Program Executable to backdoor it with optional polymorphism.
 Home-page: https://github.com/mauricelambert/PeInjector
 Download-URL: https://mauricelambert.github.io/info/python/security/PeInjector.pyz
@@ -31,6 +31,11 @@ Classifier: License :: OSI Approved :: GNU General Public License v3 or later (G
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 License-File: LICENSE.txt
+Dynamic: author
+Dynamic: download-url
+Dynamic: home-page
+Dynamic: maintainer
+Dynamic: requires-python
 
 ![PeInjector Logo](https://mauricelambert.github.io/info/python/security/PeInjector_small.png "PeInjector logo")
 
@@ -66,13 +71,16 @@ python3 -m pip install .
 ### Command line
 
 ```bash
-PeInjector                # Using CLI package executable
-python3 -m PeInjector     # Using python module
-python3 PeInjector.pyz    # Using python executable
-PeInjector.exe            # Using python Windows executable
+PeInjector                     # Using CLI package executable
+python3 -m PeInjector          # Using python module
+python3 PeInjector.pyz         # Using python executable
+PeInjector.exe                 # Using python Windows executable
 
-PeInjector test.exe 90    # Inject shellcode "NOP" (instruction 0x90) in test.exe
-PeInjector -p test.exe 90 # Inject polymorphism shellcode to execute "NOP" (instruction 0x90) in test.exe
+PeInjector test.exe 90         # Inject shellcode "NOP" (instruction 0x90) in test.exe
+PeInjector -p test.exe 90      # Inject polymorphism shellcode to execute "NOP" (instruction 0x90) in test.exe
+
+PeInjector -c test.exe calc    # Inject a shellcode to start the "calc" command line
+PeInjector -c -p test.exe calc # Inject a polymorphic shellcode (obfuscated shellcode) to start the "calc" command line
 ```
 
 ### Python
@@ -82,8 +90,11 @@ from PeInjector import *
 
 shellcode = b"\x90" # NOP instruction
 
-with open("target.exe", "rb") as target, open("backdoor.exe", "wb") as backdoor:
-    inject(target, backdoor, shellcode, polymorphism=False)
+with open("target.exe", "rb") as target, open("backdoored_nop.exe", "wb") as backdoor:
+    inject(target, backdoor, shellcode, polymorphism=False, command=True)
+
+with open("target.exe", "rb") as target, open("backdoored_command_calc.exe", "wb") as backdoor:
+    inject(target, backdoor, "calc", polymorphism=True, command=True)
 ```
 
 ## Detections
