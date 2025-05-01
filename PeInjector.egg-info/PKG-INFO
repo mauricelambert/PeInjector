@@ -1,6 +1,6 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.2
 Name: PeInjector
-Version: 1.1.0
+Version: 1.3.0
 Summary: This python tool injects shellcode in Windows Program Executable to backdoor it with optional polymorphism.
 Home-page: https://github.com/mauricelambert/PeInjector
 Download-URL: https://mauricelambert.github.io/info/python/security/PeInjector.pyz
@@ -31,6 +31,11 @@ Classifier: License :: OSI Approved :: GNU General Public License v3 or later (G
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 License-File: LICENSE.txt
+Dynamic: author
+Dynamic: download-url
+Dynamic: home-page
+Dynamic: maintainer
+Dynamic: requires-python
 
 ![PeInjector Logo](https://mauricelambert.github.io/info/python/security/PeInjector_small.png "PeInjector logo")
 
